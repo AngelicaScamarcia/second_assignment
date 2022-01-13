@@ -1,96 +1,70 @@
 ROS assignment
 ================================
 
-This is  is a simple, portable robot simulator developed by [Student Robotics](https://studentrobotics.org).
-Some of the arenas and the exercises have been modified for the Research Track I course
+This is the second assignment of the Research Track 1 course. 
+It's a C++ code to move a robot in the environment (a reproduction of the Monza's circuit) and allows the user to increase or decrease the velocity of the robot, according to the given input, or even   reset its position by calling a built in service 'reset_position'.
+
 
 Installing and running
 ----------------------
+First of all is necessary to execute the `roscore & ` command in one shell.
 
-The simulator requires a Python 2.7 installation, the [pygame](http://pygame.org/) library, [PyPyBox2D](https://pypi.python.org/pypi/pypybox2d/2.1-r331), and [PyYAML](https://pypi.python.org/pypi/PyYAML/).
+You have to download the repository from http://CarmineD8/second_assignment (github.com) and created your environment.
 
-Once the dependencies are installed, simply run the `test.py` script to test out the simulator.
-
-## Exercise
------------------------------
-
-To run one or more scripts in the simulator, use `run.py`, passing it the file names. 
-
-I am proposing you three exercises, with an increasing level of difficulty.
-The instruction for the three exercises can be found inside the .py files (exercise1.py, exercise2.py, exercise3.py).
-
-When done, you can run the program with:
+To run the simulation use:
 
 ```bash
-$ python run.py exercise1.py
+$ rosrun stage_ros stageros $(rospack find second_assignment)/world/my_world.world
 ```
 
-You have also the solutions of the exercises (folder solutions)
+To run the controller node (in a second terminal) use:
 
 ```bash
-$ python run.py solutions/exercise1_solution.py
+$  rosrun assignment_2 controller_node
 ```
 
-Robot API
+To run the client node (in a third terminal) use:
+
+```bash
+$  rosrun my_srv client
+```
+
+Now you can see the robot starts to move in the cicuit.
+
+Code
 ---------
 
-The API for controlling a simulated robot is designed to be as similar as possible to the [SR API][sr-api].
+In this code there are three nodes communicating between them: the controller_node contained in ' controller.cpp ', the stage_ros node contained in 'my_world.world' and the client node contained in the 'client.cpp'. 
 
-### Motors ###
+### Controller ###
 
-The simulated robot has two motors configured for skid steering, connected to a two-output [Motor Board](https://studentrobotics.org/docs/kit/motor_board). The left motor is connected to output `0` and the right motor to output `1`.
+The controller node is the the most important part of the code. It allows to increase or decrease the velocity of the robot thank's to this function:
 
-The Motor Board API is identical to [that of the SR API](https://studentrobotics.org/docs/programming/sr/motors/), except that motor boards cannot be addressed by serial number. So, to turn on the spot at one quarter of full power, one might write the following:
+```bash
+bool drive (my_srv::Velocity::Request &req, my_srv::Velocity::Response &res)
+```
+This function contains the input:
 
 ```python
-R.motors[0].m0.power = 25
-R.motors[0].m1.power = -25
+if (req.v == "i" ){
+		// increase the speed
+		res.x = vel + 0.1*vel;		
+	}
+	else if (req.v == "d" ){
+		// decrease the speed
+		res.x = vel - 0.1*vel;
+	}
+	if (res.x > 1.4 || res.x < 0.3){
+		// set speed limits to prevent the robot from crashing into the wall (the velocity turns to the initional value)
+		res.x = 1.0;
+	}
+	vel=res.x;
+	return res.x;
 ```
+Where the last condition sets the speed limit to the robot to prevent that, the high speed value, get him into the wall.
 
-### The Grabber ###
+Then there is a function which check the obstacles and let the robot move within the circuit:
 
-The robot is equipped with a grabber, capable of picking up a token which is in front of the robot and within 0.4 metres of the robot's centre. To pick up a token, call the `R.grab` method:
-
-```python
-success = R.grab()
+```bash
+void laserCallback(const sensor_msgs::LaserScan::ConstPtr& msg)
 ```
-
-The `R.grab` function returns `True` if a token was successfully picked up, or `False` otherwise. If the robot is already holding a token, it will throw an `AlreadyHoldingSomethingException`.
-
-To drop the token, call the `R.release` method.
-
-Cable-tie flails are not implemented.
-
-### Vision ###
-
-To help the robot find tokens and navigate, each token has markers stuck to it, as does each wall. The `R.see` method returns a list of all the markers the robot can see, as `Marker` objects. The robot can only see markers which it is facing towards.
-
-Each `Marker` object has the following attributes:
-
-* `info`: a `MarkerInfo` object describing the marker itself. Has the following attributes:
-  * `code`: the numeric code of the marker.
-  * `marker_type`: the type of object the marker is attached to (either `MARKER_TOKEN_GOLD`, `MARKER_TOKEN_SILVER` or `MARKER_ARENA`).
-  * `offset`: offset of the numeric code of the marker from the lowest numbered marker of its type. For example, token number 3 has the code 43, but offset 3.
-  * `size`: the size that the marker would be in the real game, for compatibility with the SR API.
-* `centre`: the location of the marker in polar coordinates, as a `PolarCoord` object. Has the following attributes:
-  * `length`: the distance from the centre of the robot to the object (in metres).
-  * `rot_y`: rotation about the Y axis in degrees.
-* `dist`: an alias for `centre.length`
-* `res`: the value of the `res` parameter of `R.see`, for compatibility with the SR API.
-* `rot_y`: an alias for `centre.rot_y`
-* `timestamp`: the time at which the marker was seen (when `R.see` was called).
-
-For example, the following code lists all of the markers the robot can see:
-
-```python
-markers = R.see()
-print "I can see", len(markers), "markers:"
-
-for m in markers:
-    if m.info.marker_type in (MARKER_TOKEN_GOLD, MARKER_TOKEN_SILVER):
-        print " - Token {0} is {1} metres away".format( m.info.offset, m.dist )
-    elif m.info.marker_type == MARKER_ARENA:
-        print " - Arena marker {0} is {1} metres away".format( m.info.offset, m.dist )
-```
-
-[sr-api]: https://studentrobotics.org/docs/programming/sr/
