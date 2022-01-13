@@ -1,7 +1,7 @@
-Python Robotics Simulator
+ROS assignment
 ================================
 
-This is a simple, portable robot simulator developed by [Student Robotics](https://studentrobotics.org).
+This is  is a simple, portable robot simulator developed by [Student Robotics](https://studentrobotics.org).
 Some of the arenas and the exercises have been modified for the Research Track I course
 
 Installing and running
