@@ -55,7 +55,7 @@ if (req.v == "i" ){
 		res.x = vel - 0.1*vel;
 	}
 	if (res.x > 1.4 || res.x < 0.3){
-		// set speed limits to prevent the robot from crashing into the wall (the velocity turns to the initional value)
+		// set speed limits 
 		res.x = 1.0;
 	}
 	vel=res.x;
